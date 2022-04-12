@@ -66,6 +66,7 @@ members = [
     "devtools/x-core",
     "devtools/x-lint",
     "ecosystem/indexer",
+    "ecosystem/indexer-service",
     "execution/db-bootstrapper",
     "execution/executor",
     "execution/executor-benchmark",
@@ -143,6 +144,7 @@ default-members = [
     "storage/aptossum",
     "storage/inspector",
     "ecosystem/indexer",
+    "ecosystem/indexer-service"
 ]
 
 [profile.release]

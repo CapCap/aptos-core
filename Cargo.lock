@@ -532,6 +532,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "aptos-indexer-service"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "aptos-api",
+ "aptos-api-types",
+ "aptos-indexer",
+ "aptos-logger",
+ "aptos-metrics",
+ "aptos-workspace-hack",
+ "async-trait",
+ "chrono",
+ "clap 3.1.8",
+ "diesel",
+ "futures",
+ "once_cell",
+ "r2d2",
+ "serde 1.0.136",
+ "serde_json",
+ "tokio",
+ "url",
+ "warp",
+]
+
+[[package]]
 name = "aptos-infallible"
 version = "0.1.0"
 dependencies = [

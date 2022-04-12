@@ -16,7 +16,7 @@ slug: "glossary"
 
 ## Account Address
 
-- The address of a Aptos account, see [basics on accounts](/basics/basics-accounts#initial-account-setup).
+- The address of an Aptos account, see [basics on accounts](/basics/basics-accounts#initial-account-setup).
 
 ## AptosBFT
 
