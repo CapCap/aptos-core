@@ -1,8 +1,6 @@
 // Copyright (c) Aptos
 // SPDX-License-Identifier: Apache-2.0
 
-#![recursion_limit = "512"]
-
 #[macro_use]
 extern crate diesel_migrations;
 
