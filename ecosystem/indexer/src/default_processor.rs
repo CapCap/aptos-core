@@ -1,6 +1,7 @@
 // Copyright (c) Aptos
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::database::PgPoolConnection;
 use crate::{
     database::{execute_with_better_error, PgDbPool, PgPoolConnection},
     indexer::{
