@@ -37,6 +37,7 @@ use std::{
 
 pub mod authenticator;
 mod change_set;
+pub mod entitlements;
 mod module;
 mod script;
 mod transaction_argument;
@@ -49,6 +50,7 @@ pub use script::{
 };
 
 use crate::state_store::{state_key::StateKey, state_value::StateValue};
+use crate::transaction::entitlements::Entitlements;
 use move_deps::move_core_types::vm_status::AbortLocation;
 use std::{collections::BTreeSet, hash::Hash, ops::Deref, sync::atomic::AtomicU64};
 pub use transaction_argument::{parse_transaction_argument, TransactionArgument, VecBytes};
@@ -89,6 +91,10 @@ pub struct RawTransaction {
 
     /// Chain ID of the Aptos network this transaction is intended for.
     chain_id: ChainId,
+
+    /// Entitlements for a given transaction: the limits of what the given transaction is
+    /// allowed to do
+    entitlements: Option<Entitlements>,
 }
 
 impl RawTransaction {
@@ -113,6 +119,7 @@ impl RawTransaction {
             gas_unit_price,
             expiration_timestamp_secs,
             chain_id,
+            entitlements: None,
         }
     }
 
@@ -136,6 +143,7 @@ impl RawTransaction {
             gas_unit_price,
             expiration_timestamp_secs,
             chain_id,
+            entitlements: None,
         }
     }
 
@@ -159,6 +167,7 @@ impl RawTransaction {
             gas_unit_price,
             expiration_timestamp_secs,
             chain_id,
+            entitlements: None,
         }
     }
 
@@ -183,6 +192,7 @@ impl RawTransaction {
             gas_unit_price,
             expiration_timestamp_secs,
             chain_id,
+            entitlements: None,
         }
     }
 
@@ -207,6 +217,7 @@ impl RawTransaction {
             gas_unit_price,
             expiration_timestamp_secs,
             chain_id,
+            entitlements: None,
         }
     }
 
@@ -240,6 +251,7 @@ impl RawTransaction {
             // Write-set transactions are special and important and shouldn't expire.
             expiration_timestamp_secs: u64::max_value(),
             chain_id,
+            entitlements: None,
         }
     }
 
@@ -263,6 +275,7 @@ impl RawTransaction {
             // Write-set transactions are special and important and shouldn't expire.
             expiration_timestamp_secs: u64::max_value(),
             chain_id,
+            entitlements: None,
         }
     }
 
@@ -608,6 +621,10 @@ impl SignedTransaction {
 
     pub fn expiration_timestamp_secs(&self) -> u64 {
         self.raw_txn.expiration_timestamp_secs
+    }
+
+    pub fn entitlements(&self) -> &Option<Entitlements> {
+        &self.raw_txn.entitlements
     }
 
     pub fn raw_txn_bytes_len(&self) -> usize {

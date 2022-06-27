@@ -1,6 +1,7 @@
 // Copyright (c) Aptos
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::entitlement_enforcer::ResourceChange;
 use crate::{
     adapter_common,
     adapter_common::{
@@ -24,6 +25,10 @@ use anyhow::Result;
 use aptos_crypto::HashValue;
 use aptos_logger::prelude::*;
 use aptos_state_view::StateView;
+use aptos_types::access_path::{AccessPath, Path};
+use aptos_types::state_store::state_key::StateKey;
+use aptos_types::transaction::entitlements::EntitlementClause;
+use aptos_types::write_set::WriteOp;
 use aptos_types::{
     account_config,
     block_metadata::BlockMetadata,
@@ -124,6 +129,54 @@ impl AptosVM {
             | Reference(_)
             | MutableReference(_)
             | TyParam(_) => false,
+        }
+    }
+
+    fn write_set_allowable(
+        &self,
+        data_cache: &(dyn MoveResolverExt),
+        state_key: &StateKey,
+        write_op: &WriteOp,
+    ) -> bool {
+        if let StateKey::AccessPath(access_path) = state_key {
+            let change =
+                self.try_access_path_into_write_set_change(data_cache, access_path, write_op);
+
+            for entitlement in self.inner.iter() {
+                match &entitlement.entitlement_clause {
+                    EntitlementClause::Between(ent) => {}
+                    EntitlementClause::MoreThan(ent) => {}
+                    EntitlementClause::LessThan(ent) => {}
+                    EntitlementClause::Exactly(ent) => {}
+                }
+                return false;
+            }
+        }
+        true
+    }
+
+    fn try_access_path_into_write_set_change(
+        &self,
+        data_cache: &(dyn MoveResolverExt),
+        access_path: &AccessPath,
+        op: &WriteOp,
+    ) -> Option<ResourceChange> {
+        match op {
+            WriteOp::Deletion => match access_path.get_path() {
+                Path::Resource(typ) => Some(ResourceChange::Delete(
+                    access_path.address.into(),
+                    typ.into(),
+                )),
+                _ => None,
+            },
+            WriteOp::Value(val) => match access_path.get_path() {
+                Path::Resource(typ) => Some(ResourceChange::Write(
+                    access_path.address.into(),
+                    typ.into(),
+                    self.try_into_resource(&typ, &val)?,
+                )),
+                _ => None,
+            },
         }
     }
 
@@ -926,6 +979,8 @@ impl VMAdapter for AptosVM {
         data_cache: &S,
         log_context: &AdapterLogSchema,
     ) -> Result<(VMStatus, TransactionOutput, Option<String>), VMStatus> {
+        info!("!>>> execute_single_transaction!");
+
         Ok(match txn {
             PreprocessedTransaction::BlockMetadata(block_metadata) => {
                 let (vm_status, output) =
@@ -940,8 +995,28 @@ impl VMAdapter for AptosVM {
             PreprocessedTransaction::UserTransaction(txn) => {
                 let sender = txn.sender().to_string();
                 let _timer = TXN_TOTAL_SECONDS.start_timer();
-                let (vm_status, output) =
+                let (mut vm_status, output) =
                     self.execute_user_transaction(data_cache, txn, log_context);
+                // Check the entitlements
+                let entitlements = txn.entitlements();
+                info!(
+                    "!>>> doing_one_tx  {:?}, {:?}",
+                    entitlements,
+                    serde_json::to_string(output.write_set()).unwrap()
+                );
+
+                // Check entitlements in the transaction against the writeset;
+                // Ensure the transaction is behaving itself within the users' expectations
+                if let Some(entitlements) = entitlements {
+                    for (state_key, write_op) in output.write_set().iter() {
+                        if !self.write_set_allowable(&data_cache, state_key, write_op) {
+                            // TODO: do something with this, and pass the actual invariant back to user
+                            vm_status =
+                                VMStatus::Error(StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR);
+                            break;
+                        }
+                    }
+                };
 
                 // Increment the counter for user transactions executed.
                 let counter_label = match output.status() {
